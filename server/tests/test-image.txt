@@ -1,0 +1,10 @@
+test("TEAM_MEMBER should be rejected when uploading to an unassigned event", async () => {
+  const response = await request(app)
+    .post("/api/photos/upload")
+    .set("Authorization", `Bearer ${token}`)
+    .field("eventId", "999999")
+    .attach("photos", "tests/test-image.txt");
+
+  expect(response.statusCode).toBe(403);
+  expect(response.body.success).toBe(false);
+});
