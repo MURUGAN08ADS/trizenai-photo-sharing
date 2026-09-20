@@ -1,6 +1,7 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const prisma = require("../lib/prisma");
 const {
   authenticateToken,
@@ -9,6 +10,22 @@ const {
 const router = express.Router();
 
 const { loginLimiter } = require("../middleware/rateLimit");
+
+function hasValidBootstrapToken(providedToken) {
+  const configuredToken = process.env.ADMIN_BOOTSTRAP_TOKEN;
+
+  if (!configuredToken || !providedToken) {
+    return false;
+  }
+
+  const providedBuffer = Buffer.from(providedToken);
+  const configuredBuffer = Buffer.from(configuredToken);
+
+  return (
+    providedBuffer.length === configuredBuffer.length &&
+    crypto.timingSafeEqual(providedBuffer, configuredBuffer)
+  );
+}
 
 router.post("/register", async (req, res) => {
   try {
@@ -59,6 +76,73 @@ router.post("/register", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Registration failed",
+    });
+  }
+});
+
+router.post("/bootstrap-admin", async (req, res) => {
+  try {
+    if (!hasValidBootstrapToken(req.headers["x-admin-bootstrap-token"])) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid bootstrap token",
+      });
+    }
+
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password || password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Name, email and a password of at least 8 characters are required",
+      });
+    }
+
+    const existingAdmin = await prisma.user.findFirst({
+      where: { role: "ADMIN" },
+      select: { id: true },
+    });
+
+    if (existingAdmin) {
+      return res.status(409).json({
+        success: false,
+        message: "An admin account already exists",
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const admin = await prisma.user.upsert({
+      where: { email },
+      update: {
+        name,
+        passwordHash,
+        role: "ADMIN",
+      },
+      create: {
+        name,
+        email,
+        passwordHash,
+        role: "ADMIN",
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+      },
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Admin account created",
+      user: admin,
+    });
+  } catch (error) {
+    console.error("BOOTSTRAP ADMIN ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create admin account",
     });
   }
 });
