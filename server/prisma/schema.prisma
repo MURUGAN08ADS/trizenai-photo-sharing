@@ -7,13 +7,12 @@ datasource db {
 }
 
 model User {
-  id           Int            @id @default(autoincrement())
-  name         String
-  email        String         @unique
-  passwordHash String
-  role         Role           @default(TEAM_MEMBER)
-  createdAt    DateTime       @default(now())
-
+  id            Int           @id @default(autoincrement())
+  name          String
+  email         String        @unique
+  passwordHash  String
+  role          Role          @default(TEAM_MEMBER)
+  createdAt     DateTime      @default(now())
   eventsCreated Event[]       @relation("EventCreator")
   memberships   EventMember[]
   photos        Photo[]
@@ -24,13 +23,11 @@ model Event {
   name        String
   description String?
   createdAt   DateTime      @default(now())
-
   createdById Int
   createdBy   User          @relation("EventCreator", fields: [createdById], references: [id])
-
   members     EventMember[]
-  photos      Photo[]
   gallery     Gallery?
+  photos      Photo[]
 }
 
 model EventMember {
@@ -38,50 +35,44 @@ model EventMember {
   eventId   Int
   userId    Int
   createdAt DateTime @default(now())
-
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, userId])
 }
 
 model Photo {
-  id           Int      @id @default(autoincrement())
-  eventId      Int
-  uploaderId   Int
-  filename     String
-  storageUrl   String
-  fileSize     Int
-  createdAt    DateTime @default(now())
-
-  event    Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  uploader User  @relation(fields: [uploaderId], references: [id])
-
+  id            Int            @id @default(autoincrement())
+  eventId       Int
+  uploaderId    Int
+  filename      String
+  storageUrl    String
+  fileSize      Int
+  createdAt     DateTime       @default(now())
   galleryPhotos GalleryPhoto[]
+  event         Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  uploader      User           @relation(fields: [uploaderId], references: [id])
 
   @@unique([eventId, uploaderId, filename, fileSize])
 }
 
 model Gallery {
-  id          Int       @id @default(autoincrement())
-  eventId     Int       @unique
-  token       String    @unique
+  id          Int            @id @default(autoincrement())
+  eventId     Int            @unique
+  token       String         @unique
   pinHash     String
-  published   Boolean   @default(false)
-  createdAt   DateTime  @default(now())
+  published   Boolean        @default(false)
+  createdAt   DateTime       @default(now())
   publishedAt DateTime?
-
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
-  photos GalleryPhoto[]
+  event       Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  photos      GalleryPhoto[]
 }
 
 model GalleryPhoto {
   galleryId Int
   photoId   Int
-
-  gallery Gallery @relation(fields: [galleryId], references: [id], onDelete: Cascade)
-  photo   Photo   @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  gallery   Gallery @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  photo     Photo   @relation(fields: [photoId], references: [id], onDelete: Cascade)
 
   @@id([galleryId, photoId])
 }
